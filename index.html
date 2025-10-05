@@ -133,22 +133,13 @@
 
         // --- NOTIFICATION SOUND LOGIC ---
         let isMuted = false;
-        // A simple, self-contained audio notification "ping"
         const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU9vT19PANkPC_I_1T72AFAAcQBCAGYAaQBtAHIAcwB1AHsAnACoALwAxADVANoA4ADsAPgBAQEcASsBNgFFAVIBWwFuAXwBjAGgAa8BtAHFAQgCJQIsAjgCRQJIAk4CVQJdAmkCewKIAqUCrwK7AsgC0gLVAt8C5wLoAvYDBIMFAwkDCgMVAywDPgNKA1YDWgNjA3ADfgOKA5oDrwPHA9gD5APxA_oEBAQ6BEYEWgRqBHYEgASIBJwErATMBPAFFgUqBTIFRgVLBWsFewWLBa8FxQXIBc8F4wX1BfwGAQYIBhQGIAYyBkkGSAZQBmEGhwamBqsGvgbCBs8G4gbsBvUG_wcIBwsHEgchBygHMAdDB0sHVAdtB3wHggeNB5gHpQeyB8AHyQfQB90H5QfrB_oIAggUCBwIKghCCIsIjgiSCLwI0gjeCO4JCgkfCSYJMgk6CUQJSwlVCV4JaQl1CXIJgwibCZ4Jqwm1Cb0JywnfCe4J_woMCg8KEwofCiYKKQo0CkEKRApOCmQKaAp4CoAKlAqfCq4Kuwq_Cr8KwgrMCsoK0grfCuIK9AsA=");
-        
         const muteButton = document.getElementById('muteButton');
         const speakerOnIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.414 0v14.142a1 1 0 01-1.414 0L5.586 15z" /></svg>`;
         const speakerOffIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.414 0v14.142a1 1 0 01-1.414 0L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>`;
 
-        const updateMuteButton = () => {
-            muteButton.innerHTML = isMuted ? speakerOffIcon : speakerOnIcon;
-        };
-
-        muteButton.addEventListener('click', () => {
-            isMuted = !isMuted;
-            updateMuteButton();
-        });
-
+        const updateMuteButton = () => { muteButton.innerHTML = isMuted ? speakerOffIcon : speakerOnIcon; };
+        muteButton.addEventListener('click', () => { isMuted = !isMuted; updateMuteButton(); });
 
         // --- SECTION 2: UI ELEMENT REFERENCES ---
         const authContainer = document.getElementById('auth-container');
@@ -172,8 +163,9 @@
                 authContainer.style.display = 'none';
                 chatContainer.style.display = 'flex';
                 userIdDisplay.textContent = user.email;
+                messagesContainer.innerHTML = ''; // Clear previous user's messages
                 unsubscribeMessages = loadMessages();
-                updateMuteButton(); // Set initial mute icon state
+                updateMuteButton();
             } else {
                 currentUser = null;
                 authContainer.style.display = 'block';
@@ -184,8 +176,7 @@
         
         authForm.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault();
-                signInButton.click();
+                e.preventDefault(); signInButton.click();
             }
         });
 
@@ -193,14 +184,11 @@
             const email = emailInput.value;
             const password = passwordInput.value;
             if (!email || !password) {
-                authError.textContent = 'Please enter email and password.';
-                return;
+                authError.textContent = 'Please enter email and password.'; return;
             }
             authError.textContent = '';
             signInWithEmailAndPassword(auth, email, password)
-                .catch((error) => {
-                    authError.textContent = 'Invalid email or password.';
-                });
+                .catch((error) => { authError.textContent = 'Invalid email or password.'; });
         });
 
         signOutButton.addEventListener('click', () => {
@@ -212,57 +200,62 @@
             if (!currentUser) return;
             try {
                 await addDoc(collection(db, "messages"), {
-                    uid: currentUser.uid,
-                    email: currentUser.email,
-                    text: text,
-                    createdAt: serverTimestamp(),
-                    viewedBy: [currentUser.uid]
+                    uid: currentUser.uid, email: currentUser.email, text: text, createdAt: serverTimestamp(), viewedBy: [currentUser.uid]
                 });
-            } catch (error) {
-                console.error("Error sending message: ", error);
-            }
+            } catch (error) { console.error("Error sending message: ", error); }
         }
 
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const messageText = messageInput.value.trim();
-            if (messageText) {
-                sendMessage(messageText);
-                messageInput.value = '';
-            }
+            if (messageText) { sendMessage(messageText); messageInput.value = ''; }
         });
         
         function loadMessages() {
             let isInitialLoad = true;
             const q = query(collection(db, "messages"), orderBy("createdAt"));
             
-            const unsubscribe = onSnapshot(q, (querySnapshot) => {
-                const messages = [];
-                querySnapshot.forEach(doc => {
-                    messages.push({ id: doc.id, ...doc.data() });
-                });
-
-                // Check for new message sound notification
-                if (!isInitialLoad && messages.length > 0) {
-                    const lastMessage = messages[messages.length - 1];
-                    if (lastMessage.uid !== currentUser.uid && !isMuted) {
-                        notificationSound.play().catch(e => console.error("Audio play failed:", e));
-                    }
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                if (isInitialLoad && snapshot.docs.length === 0) {
+                     messagesContainer.innerHTML = '<div class="text-center text-purple-300">No messages yet. Say something lovely!</div>';
                 }
 
-                messagesContainer.innerHTML = ''; // Clear old messages
-                if (messages.length === 0) {
-                    messagesContainer.innerHTML = '<div class="text-center text-purple-300">No messages yet. Be the first to say something lovely!</div>';
-                } else {
-                    messages.forEach((message) => {
-                        if (message.uid !== currentUser.uid && document.hidden) {
-                            favicon.href = notificationFavicon;
+                snapshot.docChanges().forEach(change => {
+                    const message = { id: change.doc.id, ...change.doc.data() };
+
+                    if (change.type === "added") {
+                        if (!isInitialLoad) { // Only play sound for new messages after initial load
+                            // Play sound for incoming messages
+                            if (message.uid !== currentUser.uid && !isMuted) {
+                                notificationSound.play().catch(e => console.error("Audio play failed. User may need to interact with the page first.", e));
+                            }
+                            // Show favicon notification for incoming messages on hidden tab
+                            if (message.uid !== currentUser.uid && document.hidden) {
+                                favicon.href = notificationFavicon;
+                            }
                         }
                         const messageElement = createMessageElement(message);
                         messagesContainer.appendChild(messageElement);
-                    });
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }
+                    }
+                    
+                    if (change.type === "modified") {
+                         // Update the seen status on the specific message element
+                         const messageElement = document.querySelector(`[data-message-id="${message.id}"]`);
+                         if (messageElement) {
+                             const seenDiv = messageElement.querySelector('.seen-status');
+                             if (seenDiv) {
+                                const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
+                                if (hasBeenSeenByOther) {
+                                    seenDiv.textContent = '✓✓';
+                                    seenDiv.className = 'seen-status text-xs text-pink-300';
+                                }
+                             }
+                         }
+                    }
+                });
+                
+                // Scroll to bottom after new messages are added
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 isInitialLoad = false;
             });
             return unsubscribe;
@@ -276,9 +269,7 @@
                     const viewedBy = JSON.parse(entry.target.dataset.viewedBy);
                     if (!viewedBy.includes(currentUser.uid)) {
                         const messageRef = doc(db, 'messages', messageId);
-                        updateDoc(messageRef, {
-                            viewedBy: arrayUnion(currentUser.uid)
-                        });
+                        updateDoc(messageRef, { viewedBy: arrayUnion(currentUser.uid) });
                     }
                     observer.unobserve(entry.target);
                 }
@@ -318,8 +309,8 @@
             messageDiv.appendChild(textP);
             
             const seenDiv = document.createElement('div');
+            seenDiv.className = 'seen-status text-xs'; // Add a class for easy selection
             if (isSentByCurrentUser) {
-                seenDiv.className = 'text-xs';
                 const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
                 if (hasBeenSeenByOther) {
                     seenDiv.textContent = '✓✓';
