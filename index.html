@@ -28,6 +28,11 @@
         #messages-container::-webkit-scrollbar-track { background: #312e81; }
         #messages-container::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
         #messages-container::-webkit-scrollbar-thumb:hover { background: #c084fc; }
+        
+        /* Reply button visibility on hover */
+        .message-wrapper:hover .reply-button {
+            opacity: 1;
+        }
 
         /* Subtle animation for the typing indicator */
         .dot-flashing {
@@ -142,6 +147,17 @@
             <!-- Message Input Form -->
             <footer class="p-4 bg-black/10 border-t border-white/10 rounded-b-2xl">
                  <div class="relative">
+                    <!-- Reply Preview Panel -->
+                    <div id="reply-preview-container" class="hidden bg-white/10 p-2 rounded-t-lg mb-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <p class="font-bold text-purple-300">Replying to <span id="reply-preview-email"></span></p>
+                            <button id="cancel-reply-button" class="p-1 rounded-full hover:bg-white/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <p id="reply-preview-text" class="text-sm text-white/70 truncate"></p>
+                    </div>
+
                     <emoji-picker class="absolute bottom-16 left-0 hidden"></emoji-picker>
                     <form id="message-form" class="flex items-center space-x-3">
                         <button type="button" id="emoji-toggle-button" class="text-purple-300 hover:text-white p-2 rounded-full transition">
@@ -186,6 +202,7 @@
         let unsubscribeMessages = null;
         let unsubscribeTypingStatus = null;
         let partnerUid = null;
+        let replyToMessage = null; // To store the message object being replied to
 
         // --- FAVICON AND NOTIFICATION LOGIC ---
         const favicon = document.getElementById('favicon');
@@ -226,6 +243,11 @@
         const typingPartnerEmail = document.getElementById('typing-partner-email');
         const emojiToggleButton = document.getElementById('emoji-toggle-button');
         const emojiPicker = document.querySelector('emoji-picker');
+        const replyPreviewContainer = document.getElementById('reply-preview-container');
+        const replyPreviewEmail = document.getElementById('reply-preview-email');
+        const replyPreviewText = document.getElementById('reply-preview-text');
+        const cancelReplyButton = document.getElementById('cancel-reply-button');
+
 
         // --- EMOJI PICKER LOGIC ---
         emojiToggleButton.addEventListener('click', () => {
@@ -236,13 +258,30 @@
             messageInput.value += event.detail.unicode;
         });
         
-        // Hide emoji picker when clicking outside
         document.addEventListener('click', (event) => {
             if (!emojiPicker.contains(event.target) && !emojiToggleButton.contains(event.target)) {
                 emojiPicker.classList.add('hidden');
             }
         });
 
+        // --- REPLY LOGIC ---
+        function setReplyTo(message) {
+            replyToMessage = {
+                text: message.text,
+                senderEmail: message.email
+            };
+            replyPreviewEmail.textContent = message.email;
+            replyPreviewText.textContent = message.text;
+            replyPreviewContainer.classList.remove('hidden');
+            messageInput.focus();
+        }
+
+        function cancelReply() {
+            replyToMessage = null;
+            replyPreviewContainer.classList.add('hidden');
+        }
+
+        cancelReplyButton.addEventListener('click', cancelReply);
 
         // --- SECTION 3: AUTHENTICATION & USER LOGIC ---
         onAuthStateChanged(auth, async (user) => {
@@ -252,7 +291,6 @@
                 authContainer.style.display = 'none';
                 chatContainer.style.display = 'flex';
                 
-                // Find partner's UID to listen to their typing status
                 const usersRef = collection(db, "typingStatus");
                 const q = query(usersRef, where("uid", "!=", currentUser.uid));
                 const querySnapshot = await getDocs(q);
@@ -290,7 +328,6 @@
         });
 
         signOutButton.addEventListener('click', () => {
-             // Set typing to false on sign out
             if (currentUser) { updateTypingStatus(false); }
             signOut(auth).catch((error) => console.error("Sign out failed:", error));
         });
@@ -298,11 +335,23 @@
         // --- SECTION 4: FIRESTORE (DATABASE) LOGIC ---
         async function sendMessage(text) {
             if (!currentUser) return;
+            
+            const messageData = {
+                uid: currentUser.uid, 
+                email: currentUser.email, 
+                text: text, 
+                createdAt: serverTimestamp(), 
+                viewedBy: [currentUser.uid]
+            };
+
+            if (replyToMessage) {
+                messageData.replyTo = replyToMessage;
+            }
+
             try {
-                await addDoc(collection(db, "messages"), {
-                    uid: currentUser.uid, email: currentUser.email, text: text, createdAt: serverTimestamp(), viewedBy: [currentUser.uid]
-                });
-                updateTypingStatus(false); // Stop typing after sending message
+                await addDoc(collection(db, "messages"), messageData);
+                updateTypingStatus(false); 
+                cancelReply();
             } catch (error) { console.error("Error sending message: ", error); }
         }
 
@@ -325,11 +374,11 @@
             updateTypingStatus(true);
             typingTimeout = setTimeout(() => {
                 updateTypingStatus(false);
-            }, 3000); // User is considered "not typing" after 3 seconds of inactivity
+            }, 3000);
         });
 
         function listenForTypingStatus() {
-            if (unsubscribeTypingStatus) unsubscribeTypingStatus(); // Unsubscribe from old listener
+            if (unsubscribeTypingStatus) unsubscribeTypingStatus(); 
             if (!partnerUid) {
                 typingIndicator.style.opacity = '0';
                 return;
@@ -410,11 +459,36 @@
             const isSentByCurrentUser = message.uid === currentUser.uid;
             
             const wrapperDiv = document.createElement('div');
-            wrapperDiv.className = `flex items-end gap-2 ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`;
+            wrapperDiv.className = `message-wrapper flex items-end gap-2 ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`;
             
+            // Reply Button
+            const replyButton = document.createElement('button');
+            replyButton.className = 'reply-button opacity-0 p-1 rounded-full hover:bg-white/20 transition-opacity';
+            replyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l4-4m-4 4l4 4" /></svg>`;
+            replyButton.onclick = () => setReplyTo(message);
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl shadow ${isSentByCurrentUser ? 'bg-pink-500 rounded-br-none' : 'bg-gray-800 rounded-bl-none'}`;
             
+            // Render the replied-to message block if it exists
+            if (message.replyTo) {
+                const replyBlock = document.createElement('div');
+                replyBlock.className = 'mb-2 p-2 rounded-lg bg-black/20 border-l-2 border-pink-400';
+                
+                const replySender = document.createElement('p');
+                replySender.className = 'font-bold text-xs text-purple-200';
+                replySender.textContent = message.replyTo.senderEmail;
+                
+                const replyText = document.createElement('p');
+                replyText.className = 'text-sm text-white/70 truncate';
+                replyText.textContent = message.replyTo.text;
+
+                replyBlock.appendChild(replySender);
+                replyBlock.appendChild(replyText);
+                messageDiv.appendChild(replyBlock);
+            }
+
+
             const headerDiv = document.createElement('div');
             headerDiv.className = 'flex justify-between items-baseline mb-1';
             
@@ -438,13 +512,18 @@
             messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(textP);
             
-            wrapperDiv.appendChild(messageDiv);
+            if (isSentByCurrentUser) {
+                wrapperDiv.appendChild(messageDiv);
+                wrapperDiv.appendChild(replyButton);
+            } else {
+                wrapperDiv.appendChild(replyButton);
+                wrapperDiv.appendChild(messageDiv);
+            }
 
-            // Corrected Logic: Only create and append the seenDiv if the current user is the sender
             if (isSentByCurrentUser) {
                 const seenDiv = document.createElement('div');
                 seenDiv.className = 'seen-status text-xs'; 
-                const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
+                const hasBeenSeenByOther = message.viewedBy && message.viewedBy.some(uid => uid !== currentUser.uid);
                 if (hasBeenSeenByOther) {
                     seenDiv.textContent = '✓✓';
                     seenDiv.className += ' text-pink-300';
