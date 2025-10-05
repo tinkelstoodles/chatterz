@@ -25,6 +25,43 @@
         #messages-container::-webkit-scrollbar-track { background: #312e81; }
         #messages-container::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
         #messages-container::-webkit-scrollbar-thumb:hover { background: #c084fc; }
+
+        /* Subtle animation for the typing indicator */
+        .dot-flashing {
+            position: relative;
+            width: 5px; height: 5px;
+            border-radius: 5px;
+            background-color: #c084fc; color: #c084fc;
+            animation: dotFlashing 1s infinite linear alternate;
+            animation-delay: .5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+        .dot-flashing::before {
+            left: -10px;
+            width: 5px; height: 5px;
+            border-radius: 5px;
+            background-color: #c084fc; color: #c084fc;
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 0s;
+        }
+        .dot-flashing::after {
+            left: 10px;
+            width: 5px; height: 5px;
+            border-radius: 5px;
+            background-color: #c084fc; color: #c084fc;
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 1s;
+        }
+        @keyframes dotFlashing {
+            0% { background-color: #c084fc; }
+            50%, 100% { background-color: rgba(192, 132, 252, 0.2); }
+        }
+
     </style>
 </head>
 <body class="flex items-center justify-center h-full font-sans">
@@ -64,15 +101,27 @@
                     <h1 class="text-xl font-bold text-pink-400 font-brand">Our Chat</h1>
                     <p id="user-id-display" class="text-xs text-purple-300">With: <span class="font-mono"></span></p>
                 </div>
-                <button id="signOutButton" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                    Sign Out
-                </button>
+                 <div class="flex items-center gap-4">
+                    <button id="muteButton" class="text-purple-300 hover:text-white transition">
+                        <!-- Speaker Icon will be dynamically inserted here -->
+                    </button>
+                    <button id="signOutButton" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        Sign Out
+                    </button>
+                </div>
             </header>
 
             <!-- Messages Container -->
             <main id="messages-container" class="flex-1 p-6 space-y-4 overflow-y-auto">
                  <div class="text-center text-purple-300">Loading our messages...</div>
             </main>
+
+            <!-- Typing Indicator -->
+            <div id="typing-indicator" class="h-6 px-6 pb-2 flex items-center gap-2 text-sm text-purple-300 opacity-0 transition-opacity">
+                <span id="typing-partner-email" class="font-semibold"></span>
+                <span>is typing</span>
+                <div class="dot-flashing"></div>
+            </div>
 
             <!-- Message Input Form -->
             <footer class="p-4 bg-black/10 border-t border-white/10 rounded-b-2xl">
@@ -94,13 +143,13 @@
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, arrayUnion, setDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
         // Import date-fns for formatting timestamps
         import { format } from "https://cdn.skypack.dev/date-fns";
 
         // --- SECTION 1: INITIALIZATION ---
         const firebaseConfig = {
-            apiKey: "__API_KEY__",
+            apiKey: "__API_key__",
             authDomain: "__AUTH_DOMAIN__",
             projectId: "__PROJECT_ID__",
             storageBucket: "__STORAGE_BUCKET__",
@@ -113,20 +162,30 @@
         const db = getFirestore(app);
         let currentUser = null;
         let unsubscribeMessages = null;
+        let unsubscribeTypingStatus = null;
+        let partnerUid = null;
 
         // --- FAVICON AND NOTIFICATION LOGIC ---
         const favicon = document.getElementById('favicon');
         const defaultFavicon = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💖</text></svg>`;
         const notificationFavicon = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌟</text></svg>`;
-        favicon.href = defaultFavicon; // Set initial favicon
+        favicon.href = defaultFavicon; 
 
-        // Listen for visibility changes to reset favicon
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 favicon.href = defaultFavicon;
             }
         });
 
+        // --- NOTIFICATION SOUND LOGIC ---
+        let isMuted = false;
+        const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU9vT19PANkPC_I_1T72AFAAcQBCAGYAaQBtAHIAcwB1AHsAnACoALwAxADVANoA4ADsAPgBAQEcASsBNgFFAVIBWwFuAXwBjAGgAa8BtAHFAQgCJQIsAjgCRQJIAk4CVQJdAmkCewKIAqUCrwK7AsgC0gLVAt8C5wLoAvYDBIMFAwkDCgMVAywDPgNKA1YDWgNjA3ADfgOKA5oDrwPHA9gD5APxA_oEBAQ6BEYEWgRqBHYEgASIBJwErATMBPAFFgUqBTIFRgVLBWsFewWLBa8FxQXIBc8F4wX1BfwGAQYIBhQGIAYyBkkGSAZQBmEGhwamBqsGvgbCBs8G4gbsBvUG_wcIBwsHEgchBygHMAdDB0sHVAdtB3wHggeNB5gHpQeyB8AHyQfQB90H5QfrB_oIAggUCBwIKghCCIsIjgiSCLwI0gjeCO4JCgkfCSYJMgk6CUQJSwlVCV4JaQl1CXIJgwibCZ4Jqwm1Cb0JywnfCe4J_woMCg8KEwofCiYKKQo0CkEKRApOCmQKaAp4CoAKlAqfCq4Kuwq_Cr8KwgrMCsoK0grfCuIK9AsA=");
+        const muteButton = document.getElementById('muteButton');
+        const speakerOnIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.414 0v14.142a1 1 0 01-1.414 0L5.586 15z" /></svg>`;
+        const speakerOffIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.414 0v14.142a1 1 0 01-1.414 0L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>`;
+
+        const updateMuteButton = () => { muteButton.innerHTML = isMuted ? speakerOffIcon : speakerOnIcon; };
+        muteButton.addEventListener('click', () => { isMuted = !isMuted; updateMuteButton(); });
 
         // --- SECTION 2: UI ELEMENT REFERENCES ---
         const authContainer = document.getElementById('auth-container');
@@ -141,46 +200,58 @@
         const emailInput = document.getElementById('email-input');
         const passwordInput = document.getElementById('password-input');
         const authError = document.getElementById('auth-error');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const typingPartnerEmail = document.getElementById('typing-partner-email');
 
-        // --- SECTION 3: AUTHENTICATION LOGIC ---
-        onAuthStateChanged(auth, (user) => {
+
+        // --- SECTION 3: AUTHENTICATION & USER LOGIC ---
+        onAuthStateChanged(auth, async (user) => {
             authError.textContent = '';
             if (user) {
                 currentUser = user;
                 authContainer.style.display = 'none';
                 chatContainer.style.display = 'flex';
-                userIdDisplay.textContent = user.email;
+                
+                // Find partner's UID to listen to their typing status
+                const usersRef = collection(db, "typingStatus");
+                const q = query(usersRef, where("uid", "!=", currentUser.uid));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    const partnerDoc = querySnapshot.docs[0];
+                    partnerUid = partnerDoc.data().uid;
+                    userIdDisplay.textContent = partnerDoc.data().email;
+                    listenForTypingStatus();
+                } else {
+                    userIdDisplay.textContent = "Waiting for partner...";
+                }
+
+                messagesContainer.innerHTML = ''; 
                 unsubscribeMessages = loadMessages();
+                updateMuteButton();
             } else {
                 currentUser = null;
+                partnerUid = null;
                 authContainer.style.display = 'block';
                 chatContainer.style.display = 'none';
                 if (unsubscribeMessages) unsubscribeMessages();
+                if (unsubscribeTypingStatus) unsubscribeTypingStatus();
             }
         });
         
-        authForm.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                signInButton.click();
-            }
-        });
+        authForm.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); signInButton.click(); }});
 
         signInButton.addEventListener('click', () => {
             const email = emailInput.value;
             const password = passwordInput.value;
-            if (!email || !password) {
-                authError.textContent = 'Please enter email and password.';
-                return;
-            }
+            if (!email || !password) { authError.textContent = 'Please enter email and password.'; return; }
             authError.textContent = '';
             signInWithEmailAndPassword(auth, email, password)
-                .catch((error) => {
-                    authError.textContent = 'Invalid email or password.';
-                });
+                .catch((error) => { authError.textContent = 'Invalid email or password.'; });
         });
 
         signOutButton.addEventListener('click', () => {
+             // Set typing to false on sign out
+            if (currentUser) { updateTypingStatus(false); }
             signOut(auth).catch((error) => console.error("Sign out failed:", error));
         });
 
@@ -189,61 +260,108 @@
             if (!currentUser) return;
             try {
                 await addDoc(collection(db, "messages"), {
-                    uid: currentUser.uid,
-                    email: currentUser.email,
-                    text: text,
-                    createdAt: serverTimestamp(),
-                    viewedBy: [currentUser.uid] // Creator has "viewed" it by default
+                    uid: currentUser.uid, email: currentUser.email, text: text, createdAt: serverTimestamp(), viewedBy: [currentUser.uid]
                 });
-            } catch (error) {
-                console.error("Error sending message: ", error);
-            }
+                updateTypingStatus(false); // Stop typing after sending message
+            } catch (error) { console.error("Error sending message: ", error); }
         }
 
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const messageText = messageInput.value.trim();
-            if (messageText) {
-                sendMessage(messageText);
-                messageInput.value = '';
-            }
+            if (messageText) { sendMessage(messageText); messageInput.value = ''; }
         });
+
+        // --- TYPING INDICATOR LOGIC ---
+        let typingTimeout;
+        const updateTypingStatus = async (isTyping) => {
+            if (!currentUser) return;
+            const typingRef = doc(db, 'typingStatus', currentUser.uid);
+            await setDoc(typingRef, { isTyping, email: currentUser.email, uid: currentUser.uid });
+        };
+
+        messageInput.addEventListener('input', () => {
+            clearTimeout(typingTimeout);
+            updateTypingStatus(true);
+            typingTimeout = setTimeout(() => {
+                updateTypingStatus(false);
+            }, 3000); // User is considered "not typing" after 3 seconds of inactivity
+        });
+
+        function listenForTypingStatus() {
+            if (unsubscribeTypingStatus) unsubscribeTypingStatus(); // Unsubscribe from old listener
+            if (!partnerUid) {
+                typingIndicator.style.opacity = '0';
+                return;
+            }
+            const partnerTypingRef = doc(db, 'typingStatus', partnerUid);
+            unsubscribeTypingStatus = onSnapshot(partnerTypingRef, (doc) => {
+                if (doc.exists() && doc.data().isTyping) {
+                    typingPartnerEmail.textContent = doc.data().email.split('@')[0];
+                    typingIndicator.style.opacity = '1';
+                } else {
+                    typingIndicator.style.opacity = '0';
+                }
+            });
+        }
+        
         
         function loadMessages() {
+            let isInitialLoad = true;
             const q = query(collection(db, "messages"), orderBy("createdAt"));
-            const unsubscribe = onSnapshot(q, (querySnapshot) => {
-                messagesContainer.innerHTML = '';
-                if (querySnapshot.empty) {
-                    messagesContainer.innerHTML = '<div class="text-center text-purple-300">No messages yet. Be the first to say something lovely!</div>';
-                } else {
-                    querySnapshot.forEach((doc) => {
-                        const message = { id: doc.id, ...doc.data() };
-                        if (message.uid !== currentUser.uid && document.hidden) {
-                            favicon.href = notificationFavicon;
+            
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                if (isInitialLoad && snapshot.docs.length === 0) {
+                     messagesContainer.innerHTML = '<div class="text-center text-purple-300">No messages yet. Say something lovely!</div>';
+                }
+
+                snapshot.docChanges().forEach(change => {
+                    const message = { id: change.doc.id, ...change.doc.data() };
+
+                    if (change.type === "added") {
+                        if (!isInitialLoad) { 
+                            if (message.uid !== currentUser.uid && !isMuted) {
+                                notificationSound.play().catch(e => {});
+                            }
+                            if (message.uid !== currentUser.uid && document.hidden) {
+                                favicon.href = notificationFavicon;
+                            }
                         }
                         const messageElement = createMessageElement(message);
                         messagesContainer.appendChild(messageElement);
-                    });
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }
+                    }
+                    
+                    if (change.type === "modified") {
+                         const messageElement = document.querySelector(`[data-message-id="${message.id}"]`);
+                         if (messageElement) {
+                             const seenDiv = messageElement.querySelector('.seen-status');
+                             if (seenDiv) {
+                                const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
+                                if (hasBeenSeenByOther) {
+                                    seenDiv.textContent = '✓✓';
+                                    seenDiv.className = 'seen-status text-xs text-pink-300';
+                                }
+                             }
+                         }
+                    }
+                });
+                
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                isInitialLoad = false;
             });
             return unsubscribe;
         }
 
-        // --- "VIEWED" LOGIC USING INTERSECTION OBSERVER ---
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const messageId = entry.target.dataset.messageId;
                     const viewedBy = JSON.parse(entry.target.dataset.viewedBy);
-                    // Mark as viewed if it's another user's message and I haven't viewed it yet
                     if (!viewedBy.includes(currentUser.uid)) {
                         const messageRef = doc(db, 'messages', messageId);
-                        updateDoc(messageRef, {
-                            viewedBy: arrayUnion(currentUser.uid)
-                        });
+                        updateDoc(messageRef, { viewedBy: arrayUnion(currentUser.uid) });
                     }
-                    observer.unobserve(entry.target); // Stop observing once seen
+                    observer.unobserve(entry.target);
                 }
             });
         }, { threshold: 1.0 });
@@ -272,19 +390,17 @@
             
             headerDiv.appendChild(emailSpan);
             headerDiv.appendChild(timeSpan);
-            
+
             const textP = document.createElement('p');
             textP.className = 'text-sm text-white break-words';
             textP.textContent = message.text;
             
             messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(textP);
-
-            // Add the 'viewed' checkmark
+            
             const seenDiv = document.createElement('div');
+            seenDiv.className = 'seen-status text-xs'; 
             if (isSentByCurrentUser) {
-                seenDiv.className = 'text-xs';
-                // Check if anyone OTHER than the current user has seen it
                 const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
                 if (hasBeenSeenByOther) {
                     seenDiv.textContent = '✓✓';
@@ -298,9 +414,8 @@
             wrapperDiv.appendChild(messageDiv);
             wrapperDiv.appendChild(seenDiv);
 
-            // Set up observer to mark as read
             wrapperDiv.dataset.messageId = message.id;
-            wrapperDiv.dataset.viewedBy = JSON.stringify(message.viewedBy);
+            wrapperDiv.dataset.viewedBy = JSON.stringify(message.viewedBy || []);
             observer.observe(wrapperDiv);
             
             return wrapperDiv;
@@ -308,3 +423,4 @@
     </script>
 </body>
 </html>
+
