@@ -64,9 +64,14 @@
                     <h1 class="text-xl font-bold text-pink-400 font-brand">Our Chat</h1>
                     <p id="user-id-display" class="text-xs text-purple-300">With: <span class="font-mono"></span></p>
                 </div>
-                <button id="signOutButton" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                    Sign Out
-                </button>
+                <div class="flex items-center gap-4">
+                    <button id="muteButton" class="text-purple-300 hover:text-white transition">
+                        <!-- Speaker Icon will be dynamically inserted here -->
+                    </button>
+                    <button id="signOutButton" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        Sign Out
+                    </button>
+                </div>
             </header>
 
             <!-- Messages Container -->
@@ -118,13 +123,30 @@
         const favicon = document.getElementById('favicon');
         const defaultFavicon = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💖</text></svg>`;
         const notificationFavicon = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌟</text></svg>`;
-        favicon.href = defaultFavicon; // Set initial favicon
+        favicon.href = defaultFavicon; 
 
-        // Listen for visibility changes to reset favicon
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 favicon.href = defaultFavicon;
             }
+        });
+
+        // --- NOTIFICATION SOUND LOGIC ---
+        let isMuted = false;
+        // A simple, self-contained audio notification "ping"
+        const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU9vT19PANkPC_I_1T72AFAAcQBCAGYAaQBtAHIAcwB1AHsAnACoALwAxADVANoA4ADsAPgBAQEcASsBNgFFAVIBWwFuAXwBjAGgAa8BtAHFAQgCJQIsAjgCRQJIAk4CVQJdAmkCewKIAqUCrwK7AsgC0gLVAt8C5wLoAvYDBIMFAwkDCgMVAywDPgNKA1YDWgNjA3ADfgOKA5oDrwPHA9gD5APxA_oEBAQ6BEYEWgRqBHYEgASIBJwErATMBPAFFgUqBTIFRgVLBWsFewWLBa8FxQXIBc8F4wX1BfwGAQYIBhQGIAYyBkkGSAZQBmEGhwamBqsGvgbCBs8G4gbsBvUG_wcIBwsHEgchBygHMAdDB0sHVAdtB3wHggeNB5gHpQeyB8AHyQfQB90H5QfrB_oIAggUCBwIKghCCIsIjgiSCLwI0gjeCO4JCgkfCSYJMgk6CUQJSwlVCV4JaQl1CXIJgwibCZ4Jqwm1Cb0JywnfCe4J_woMCg8KEwofCiYKKQo0CkEKRApOCmQKaAp4CoAKlAqfCq4Kuwq_Cr8KwgrMCsoK0grfCuIK9AsA=");
+        
+        const muteButton = document.getElementById('muteButton');
+        const speakerOnIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.414 0v14.142a1 1 0 01-1.414 0L5.586 15z" /></svg>`;
+        const speakerOffIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.414 0v14.142a1 1 0 01-1.414 0L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>`;
+
+        const updateMuteButton = () => {
+            muteButton.innerHTML = isMuted ? speakerOffIcon : speakerOnIcon;
+        };
+
+        muteButton.addEventListener('click', () => {
+            isMuted = !isMuted;
+            updateMuteButton();
         });
 
 
@@ -151,6 +173,7 @@
                 chatContainer.style.display = 'flex';
                 userIdDisplay.textContent = user.email;
                 unsubscribeMessages = loadMessages();
+                updateMuteButton(); // Set initial mute icon state
             } else {
                 currentUser = null;
                 authContainer.style.display = 'block';
@@ -193,7 +216,7 @@
                     email: currentUser.email,
                     text: text,
                     createdAt: serverTimestamp(),
-                    viewedBy: [currentUser.uid] // Creator has "viewed" it by default
+                    viewedBy: [currentUser.uid]
                 });
             } catch (error) {
                 console.error("Error sending message: ", error);
@@ -210,14 +233,28 @@
         });
         
         function loadMessages() {
+            let isInitialLoad = true;
             const q = query(collection(db, "messages"), orderBy("createdAt"));
+            
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
-                messagesContainer.innerHTML = '';
-                if (querySnapshot.empty) {
+                const messages = [];
+                querySnapshot.forEach(doc => {
+                    messages.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Check for new message sound notification
+                if (!isInitialLoad && messages.length > 0) {
+                    const lastMessage = messages[messages.length - 1];
+                    if (lastMessage.uid !== currentUser.uid && !isMuted) {
+                        notificationSound.play().catch(e => console.error("Audio play failed:", e));
+                    }
+                }
+
+                messagesContainer.innerHTML = ''; // Clear old messages
+                if (messages.length === 0) {
                     messagesContainer.innerHTML = '<div class="text-center text-purple-300">No messages yet. Be the first to say something lovely!</div>';
                 } else {
-                    querySnapshot.forEach((doc) => {
-                        const message = { id: doc.id, ...doc.data() };
+                    messages.forEach((message) => {
                         if (message.uid !== currentUser.uid && document.hidden) {
                             favicon.href = notificationFavicon;
                         }
@@ -226,6 +263,7 @@
                     });
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
+                isInitialLoad = false;
             });
             return unsubscribe;
         }
@@ -236,14 +274,13 @@
                 if (entry.isIntersecting) {
                     const messageId = entry.target.dataset.messageId;
                     const viewedBy = JSON.parse(entry.target.dataset.viewedBy);
-                    // Mark as viewed if it's another user's message and I haven't viewed it yet
                     if (!viewedBy.includes(currentUser.uid)) {
                         const messageRef = doc(db, 'messages', messageId);
                         updateDoc(messageRef, {
                             viewedBy: arrayUnion(currentUser.uid)
                         });
                     }
-                    observer.unobserve(entry.target); // Stop observing once seen
+                    observer.unobserve(entry.target);
                 }
             });
         }, { threshold: 1.0 });
@@ -272,19 +309,17 @@
             
             headerDiv.appendChild(emailSpan);
             headerDiv.appendChild(timeSpan);
-            
+
             const textP = document.createElement('p');
             textP.className = 'text-sm text-white break-words';
             textP.textContent = message.text;
             
             messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(textP);
-
-            // Add the 'viewed' checkmark
+            
             const seenDiv = document.createElement('div');
             if (isSentByCurrentUser) {
                 seenDiv.className = 'text-xs';
-                // Check if anyone OTHER than the current user has seen it
                 const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
                 if (hasBeenSeenByOther) {
                     seenDiv.textContent = '✓✓';
@@ -298,9 +333,8 @@
             wrapperDiv.appendChild(messageDiv);
             wrapperDiv.appendChild(seenDiv);
 
-            // Set up observer to mark as read
             wrapperDiv.dataset.messageId = message.id;
-            wrapperDiv.dataset.viewedBy = JSON.stringify(message.viewedBy);
+            wrapperDiv.dataset.viewedBy = JSON.stringify(message.viewedBy || []);
             observer.observe(wrapperDiv);
             
             return wrapperDiv;
