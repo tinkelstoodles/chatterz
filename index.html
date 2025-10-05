@@ -398,9 +398,12 @@
             messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(textP);
             
-            const seenDiv = document.createElement('div');
-            seenDiv.className = 'seen-status text-xs'; 
+            wrapperDiv.appendChild(messageDiv);
+
+            // Corrected Logic: Only create and append the seenDiv if the current user is the sender
             if (isSentByCurrentUser) {
+                const seenDiv = document.createElement('div');
+                seenDiv.className = 'seen-status text-xs'; 
                 const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
                 if (hasBeenSeenByOther) {
                     seenDiv.textContent = '✓✓';
@@ -409,10 +412,8 @@
                     seenDiv.textContent = '✓';
                     seenDiv.className += ' text-gray-400';
                 }
+                wrapperDiv.appendChild(seenDiv);
             }
-
-            wrapperDiv.appendChild(messageDiv);
-            wrapperDiv.appendChild(seenDiv);
 
             wrapperDiv.dataset.messageId = message.id;
             wrapperDiv.dataset.viewedBy = JSON.stringify(message.viewedBy || []);
