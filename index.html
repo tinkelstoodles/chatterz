@@ -3,63 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Chat</title>
+    <title>Chatterz</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Import a lovely font for headings -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/fp/index.min.js"></script>
     <style>
-        /* Simple scrollbar styling for a better look */
+        /* Custom font for headings */
+        .font-brand {
+            font-family: 'Dancing Script', cursive;
+        }
+        /* Default font for the app */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Romantic background gradient */
+        body {
+             background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%);
+        }
+
+        /* Scrollbar styling */
         #messages-container::-webkit-scrollbar {
             width: 8px;
         }
         #messages-container::-webkit-scrollbar-track {
-            background: #2d3748; /* bg-gray-800 */
+            background: #312e81; /* A deep purple */
         }
         #messages-container::-webkit-scrollbar-thumb {
-            background: #4a5568; /* bg-gray-700 */
+            background: #a855f7; /* A lighter purple */
             border-radius: 4px;
         }
         #messages-container::-webkit-scrollbar-thumb:hover {
-            background: #718096; /* bg-gray-600 */
+            background: #c084fc; /* A brighter purple on hover */
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center h-full font-sans">
+<body class="flex items-center justify-center h-full font-sans">
 
     <!-- Auth Container -->
     <div id="auth-container" class="w-full max-w-sm mx-auto">
-        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl">
-            <h1 class="text-3xl font-bold mb-2 text-center text-blue-400">ChatApp</h1>
-            <p class="text-gray-400 mb-6 text-center">Login or create an account to start.</p>
-            <form id="auth-form" onsubmit="return false;"> <!-- Prevent default form submission -->
+        <div class="bg-black/20 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/10">
+            <div class="flex items-center justify-center gap-2">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-pink-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                </svg>
+                <h1 class="text-5xl font-brand text-pink-400 text-center">Chatterz</h1>
+            </div>
+            <p class="text-purple-300 mb-6 text-center mt-2">Our private space</p>
+            <form id="auth-form" onsubmit="return false;">
                 <div class="mb-4">
-                    <label for="email-input" class="sr-only">Email</label>
-                    <input type="email" id="email-input" placeholder="Enter your email" autocomplete="email" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+                    <input type="email" id="email-input" placeholder="Your email" autocomplete="email" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition" required>
                 </div>
                 <div class="mb-6">
-                     <label for="password-input" class="sr-only">Password</label>
-                    <input type="password" id="password-input" placeholder="Enter your password" autocomplete="current-password" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+                    <input type="password" id="password-input" placeholder="Your password" autocomplete="current-password" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition" required>
                 </div>
-                <div class="flex items-center justify-between gap-4">
-                    <button id="signInButton" type="button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out">
-                        Sign In
-                    </button>
-                    <button id="signUpButton" type="button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out">
-                        Sign Up
-                    </button>
-                </div>
+                <button id="signInButton" type="button" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out">
+                    Sign In
+                </button>
             </form>
-            <p id="auth-error" class="text-red-400 text-sm mt-4 text-center h-5"></p> <!-- For displaying errors -->
+            <p id="auth-error" class="text-red-400 text-sm mt-4 text-center h-5"></p>
         </div>
     </div>
 
 
     <!-- Chat Container (Initially Hidden) -->
     <div id="chat-container" class="w-full h-full max-w-4xl mx-auto flex-col p-4 hidden">
-        <div class="bg-gray-800 rounded-2xl shadow-2xl flex flex-col w-full h-full">
+        <div class="bg-black/20 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl flex flex-col w-full h-full">
             <!-- Header -->
-            <header class="bg-gray-900/50 p-4 border-b border-gray-700 rounded-t-2xl flex justify-between items-center">
+            <header class="bg-black/10 p-4 border-b border-white/10 rounded-t-2xl flex justify-between items-center">
                 <div>
-                    <h1 class="text-xl font-bold text-blue-400">Public Chat Room</h1>
-                    <p id="user-id-display" class="text-xs text-gray-400">Logged in as: <span class="font-mono"></span></p>
+                    <h1 class="text-xl font-bold text-pink-400 font-brand">Our Chat</h1>
+                    <p id="user-id-display" class="text-xs text-purple-300">With: <span class="font-mono"></span></p>
                 </div>
                 <button id="signOutButton" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
                     Sign Out
@@ -68,16 +85,17 @@
 
             <!-- Messages Container -->
             <main id="messages-container" class="flex-1 p-6 space-y-4 overflow-y-auto">
-                <!-- Messages will be dynamically added here -->
-                 <div class="text-center text-gray-500">Loading messages...</div>
+                 <div class="text-center text-purple-300">Loading our messages...</div>
             </main>
 
             <!-- Message Input Form -->
-            <footer class="p-4 bg-gray-900/50 border-t border-gray-700 rounded-b-2xl">
+            <footer class="p-4 bg-black/10 border-t border-white/10 rounded-b-2xl">
                 <form id="message-form" class="flex items-center space-x-3">
-                    <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300 transform hover:scale-105">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <input type="text" id="message-input" placeholder="Type something lovely..." autocomplete="off" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition" required>
+                    <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white font-bold p-3 rounded-lg transition duration-300 transform hover:scale-110">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                           <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                        </svg>
                         <span class="sr-only">Send</span>
                     </button>
                 </form>
@@ -92,10 +110,10 @@
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        // Import date-fns for formatting timestamps
+        import { format } from "https://cdn.skypack.dev/date-fns";
 
         // --- SECTION 1: INITIALIZATION ---
-        // Your web app's Firebase configuration
-        // PLACEHOLDERS will be replaced by GitHub Actions during deployment
         const firebaseConfig = {
             apiKey: "__API_KEY__",
             authDomain: "__AUTH_DOMAIN__",
@@ -105,22 +123,19 @@
             appId: "__APP_ID__",
             measurementId: "__MEASUREMENT_ID__"
         };
-
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const db = getFirestore(app);
-
-        let currentUser = null; // Variable to hold the current user's state
-        let unsubscribeMessages = null; // To store the unsubscribe function for the messages listener
+        let currentUser = null;
+        let unsubscribeMessages = null;
         console.log("App starting...");
 
         // --- SECTION 2: UI ELEMENT REFERENCES ---
         const authContainer = document.getElementById('auth-container');
         const chatContainer = document.getElementById('chat-container');
+        const authForm = document.getElementById('auth-form');
         const signInButton = document.getElementById('signInButton');
-        const signUpButton = document.getElementById('signUpButton');
         const signOutButton = document.getElementById('signOutButton');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
@@ -130,88 +145,48 @@
         const passwordInput = document.getElementById('password-input');
         const authError = document.getElementById('auth-error');
 
-
         // --- SECTION 3: AUTHENTICATION LOGIC ---
-        // Listen for authentication state changes
         onAuthStateChanged(auth, (user) => {
-            authError.textContent = ''; // Clear errors on state change
+            authError.textContent = '';
             if (user) {
-                // User is signed in
-                console.log("User is signed in:", user);
                 currentUser = user;
                 authContainer.style.display = 'none';
-                chatContainer.style.display = 'flex'; // Use flex to show the container
-                userIdDisplay.textContent = user.email; // Display user's email
-                
-                // Load messages and listen for new ones
+                chatContainer.style.display = 'flex';
+                userIdDisplay.textContent = user.email;
                 unsubscribeMessages = loadMessages();
-
             } else {
-                // User is signed out
-                console.log("User is signed out");
                 currentUser = null;
                 authContainer.style.display = 'block';
                 chatContainer.style.display = 'none';
                 userIdDisplay.textContent = '';
-                // Clear password field on sign out for security
                 passwordInput.value = '';
-
-                // Unsubscribe from the messages listener to prevent memory leaks
                 if (unsubscribeMessages) {
                     unsubscribeMessages();
                 }
-                 messagesContainer.innerHTML = '<div class="text-center text-gray-500">Sign in to see messages.</div>';
+                messagesContainer.innerHTML = '<div class="text-center text-purple-300">Sign in to see your messages.</div>';
+            }
+        });
+        
+        // Listen for 'Enter' key press on the auth form
+        authForm.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent default form submission which reloads the page
+                signInButton.click(); // Programmatically click the sign-in button
             }
         });
 
-        // Sign Up button event listener
-        signUpButton.addEventListener('click', () => {
+        signInButton.addEventListener('click', () => {
             const email = emailInput.value;
             const password = passwordInput.value;
-
             if (!email || !password) {
                 authError.textContent = 'Please enter both email and password.';
                 return;
             }
-
-            authError.textContent = ''; // Clear previous errors
-            createUserWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    // Signed up and signed in. The onAuthStateChanged listener will handle the UI change.
-                    console.log("Signed up:", userCredential.user);
-                })
-                .catch((error) => {
-                    console.error("Sign up failed:", error);
-                    // Provide user-friendly error messages
-                    if (error.code === 'auth/email-already-in-use') {
-                        authError.textContent = 'This email is already in use.';
-                    } else if (error.code === 'auth/weak-password') {
-                        authError.textContent = 'Password should be at least 6 characters.';
-                    } else {
-                        authError.textContent = 'An error occurred during sign up.';
-                    }
-                });
-        });
-
-        // Sign in button event listener
-        signInButton.addEventListener('click', () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-
-             if (!email || !password) {
-                authError.textContent = 'Please enter both email and password.';
-                return;
-            }
-
-            authError.textContent = ''; // Clear previous errors
+            authError.textContent = '';
             signInWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                     // Signed in. The onAuthStateChanged listener will handle the UI change.
-                     console.log("Signed in:", userCredential.user);
-                })
                 .catch((error) => {
                     console.error("Authentication failed:", error);
-                     if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                    if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
                         authError.textContent = 'Invalid email or password.';
                     } else {
                         authError.textContent = 'An error occurred during sign in.';
@@ -219,21 +194,13 @@
                 });
         });
 
-        // Sign out button event listener
         signOutButton.addEventListener('click', () => {
-            signOut(auth).catch((error) => {
-                console.error("Sign out failed:", error);
-            });
+            signOut(auth).catch((error) => console.error("Sign out failed:", error));
         });
 
         // --- SECTION 4: FIRESTORE (DATABASE) LOGIC ---
-        
-        // Function to send a message
         async function sendMessage(text) {
-            if (!currentUser) {
-                console.log("Cannot send message, no user logged in.");
-                return;
-            }
+            if (!currentUser) return;
             try {
                 await addDoc(collection(db, "messages"), {
                     uid: currentUser.uid,
@@ -241,75 +208,76 @@
                     text: text,
                     createdAt: serverTimestamp()
                 });
-                console.log("Message sent successfully!");
             } catch (error) {
                 console.error("Error sending message: ", error);
             }
         }
 
-        // Event listener for the message form submission
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const messageText = messageInput.value.trim();
             if (messageText) {
                 sendMessage(messageText);
-                messageInput.value = ''; // Clear the input field
+                messageInput.value = '';
             }
         });
-
-        // Function to load and display messages in real-time
+        
         function loadMessages() {
             const q = query(collection(db, "messages"), orderBy("createdAt"));
-
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
-                messagesContainer.innerHTML = ''; // Clear old messages
+                messagesContainer.innerHTML = '';
                 if (querySnapshot.empty) {
-                    messagesContainer.innerHTML = '<div class="text-center text-gray-500">No messages yet. Be the first to say something!</div>';
+                    messagesContainer.innerHTML = '<div class="text-center text-purple-300">No messages yet. Be the first to say something lovely!</div>';
                 } else {
                     querySnapshot.forEach((doc) => {
-                        const message = doc.data();
+                        const message = { id: doc.id, ...doc.data() };
                         const messageElement = createMessageElement(message);
                         messagesContainer.appendChild(messageElement);
                     });
-                     // Auto-scroll to the bottom
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
             }, (error) => {
                 console.error("Error loading messages:", error);
-                messagesContainer.innerHTML = '<div class="text-center text-red-400">Error loading messages.</div>';
+                messagesContainer.innerHTML = '<div class="text-center text-red-400">Could not load messages.</div>';
             });
-            
-            return unsubscribe; // Return the function to stop listening
+            return unsubscribe;
         }
 
-        // Helper function to create an HTML element for a single message
         function createMessageElement(message) {
             const isSentByCurrentUser = message.uid === currentUser.uid;
-
             const wrapperDiv = document.createElement('div');
             wrapperDiv.className = `flex ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`;
-
+            
             const messageDiv = document.createElement('div');
-            messageDiv.className = `max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl shadow ${isSentByCurrentUser ? 'bg-blue-600 rounded-br-none' : 'bg-gray-700 rounded-bl-none'}`;
+            messageDiv.className = `max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl shadow ${isSentByCurrentUser ? 'bg-pink-500 rounded-br-none' : 'bg-gray-800 rounded-bl-none'}`;
+            
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'flex justify-between items-baseline mb-1';
             
             const emailSpan = document.createElement('span');
-            emailSpan.className = 'block text-xs font-bold text-gray-300 mb-1';
+            emailSpan.className = 'text-xs font-bold text-purple-200';
             emailSpan.textContent = isSentByCurrentUser ? 'You' : message.email;
 
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'text-xs text-purple-300 ml-2';
+            if (message.createdAt) {
+                timeSpan.textContent = format(message.createdAt.toDate(), 'h:mm a');
+            }
+            
+            headerDiv.appendChild(emailSpan);
+            headerDiv.appendChild(timeSpan);
+            
             const textP = document.createElement('p');
             textP.className = 'text-sm text-white';
             textP.textContent = message.text;
-
-            messageDiv.appendChild(emailSpan);
+            
+            messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(textP);
             wrapperDiv.appendChild(messageDiv);
-
+            
             return wrapperDiv;
         }
-
     </script>
-
 </body>
 </html>
-
 
