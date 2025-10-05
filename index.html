@@ -13,6 +13,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/fp/index.min.js"></script>
+    <!-- Import Emoji Picker Library -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+
     <style>
         /* Custom font for headings */
         .font-brand { font-family: 'Dancing Script', cursive; }
@@ -62,6 +65,19 @@
             50%, 100% { background-color: rgba(192, 132, 252, 0.2); }
         }
 
+        /* Custom styles for the emoji picker to match our theme */
+        emoji-picker {
+            --background: rgba(30, 27, 75, 0.8);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --input-background-color: rgba(255, 255, 255, 0.05);
+            --indicator-color: #a855f7;
+            --border-radius: 1rem;
+            backdrop-filter: blur(10px);
+        }
+        emoji-picker::part(search) {
+            color: white;
+            border-radius: 0.5rem;
+        }
     </style>
 </head>
 <body class="flex items-center justify-center h-full font-sans">
@@ -125,15 +141,21 @@
 
             <!-- Message Input Form -->
             <footer class="p-4 bg-black/10 border-t border-white/10 rounded-b-2xl">
-                <form id="message-form" class="flex items-center space-x-3">
-                    <input type="text" id="message-input" placeholder="Type something lovely..." autocomplete="off" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition" required>
-                    <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white font-bold p-3 rounded-lg transition duration-300 transform hover:scale-110">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                           <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
-                        </svg>
-                        <span class="sr-only">Send</span>
-                    </button>
-                </form>
+                 <div class="relative">
+                    <emoji-picker class="absolute bottom-16 left-0 hidden"></emoji-picker>
+                    <form id="message-form" class="flex items-center space-x-3">
+                        <button type="button" id="emoji-toggle-button" class="text-purple-300 hover:text-white p-2 rounded-full transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </button>
+                        <input type="text" id="message-input" placeholder="Type something lovely..." autocomplete="off" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition" required>
+                        <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white font-bold p-3 rounded-lg transition duration-300 transform hover:scale-110">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                               <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="sr-only">Send</span>
+                        </button>
+                    </form>
+                </div>
             </footer>
         </div>
     </div>
@@ -202,6 +224,24 @@
         const authError = document.getElementById('auth-error');
         const typingIndicator = document.getElementById('typing-indicator');
         const typingPartnerEmail = document.getElementById('typing-partner-email');
+        const emojiToggleButton = document.getElementById('emoji-toggle-button');
+        const emojiPicker = document.querySelector('emoji-picker');
+
+        // --- EMOJI PICKER LOGIC ---
+        emojiToggleButton.addEventListener('click', () => {
+            emojiPicker.classList.toggle('hidden');
+        });
+
+        emojiPicker.addEventListener('emoji-click', event => {
+            messageInput.value += event.detail.unicode;
+        });
+        
+        // Hide emoji picker when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!emojiPicker.contains(event.target) && !emojiToggleButton.contains(event.target)) {
+                emojiPicker.classList.add('hidden');
+            }
+        });
 
 
         // --- SECTION 3: AUTHENTICATION & USER LOGIC ---
