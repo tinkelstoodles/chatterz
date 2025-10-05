@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatterz</title>
+    <!-- Favicon will be set dynamically by JavaScript -->
+    <link id="favicon" rel="icon" href="">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Import a lovely font for headings -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,32 +15,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/fp/index.min.js"></script>
     <style>
         /* Custom font for headings */
-        .font-brand {
-            font-family: 'Dancing Script', cursive;
-        }
-        /* Default font for the app */
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+        .font-brand { font-family: 'Dancing Script', cursive; }
+        body { font-family: 'Inter', sans-serif; }
         /* Romantic background gradient */
-        body {
-             background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%);
-        }
+        body { background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%); }
 
         /* Scrollbar styling */
-        #messages-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        #messages-container::-webkit-scrollbar-track {
-            background: #312e81; /* A deep purple */
-        }
-        #messages-container::-webkit-scrollbar-thumb {
-            background: #a855f7; /* A lighter purple */
-            border-radius: 4px;
-        }
-        #messages-container::-webkit-scrollbar-thumb:hover {
-            background: #c084fc; /* A brighter purple on hover */
-        }
+        #messages-container::-webkit-scrollbar { width: 8px; }
+        #messages-container::-webkit-scrollbar-track { background: #312e81; }
+        #messages-container::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
+        #messages-container::-webkit-scrollbar-thumb:hover { background: #c084fc; }
     </style>
 </head>
 <body class="flex items-center justify-center h-full font-sans">
@@ -107,9 +93,8 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
         // Import date-fns for formatting timestamps
         import { format } from "https://cdn.skypack.dev/date-fns";
 
@@ -124,12 +109,24 @@
             measurementId: "__MEASUREMENT_ID__"
         };
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const db = getFirestore(app);
         let currentUser = null;
         let unsubscribeMessages = null;
-        console.log("App starting...");
+
+        // --- FAVICON AND NOTIFICATION LOGIC ---
+        const favicon = document.getElementById('favicon');
+        const defaultFavicon = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💖</text></svg>`;
+        const notificationFavicon = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌟</text></svg>`;
+        favicon.href = defaultFavicon; // Set initial favicon
+
+        // Listen for visibility changes to reset favicon
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                favicon.href = defaultFavicon;
+            }
+        });
+
 
         // --- SECTION 2: UI ELEMENT REFERENCES ---
         const authContainer = document.getElementById('auth-container');
@@ -158,20 +155,14 @@
                 currentUser = null;
                 authContainer.style.display = 'block';
                 chatContainer.style.display = 'none';
-                userIdDisplay.textContent = '';
-                passwordInput.value = '';
-                if (unsubscribeMessages) {
-                    unsubscribeMessages();
-                }
-                messagesContainer.innerHTML = '<div class="text-center text-purple-300">Sign in to see your messages.</div>';
+                if (unsubscribeMessages) unsubscribeMessages();
             }
         });
         
-        // Listen for 'Enter' key press on the auth form
         authForm.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent default form submission which reloads the page
-                signInButton.click(); // Programmatically click the sign-in button
+                e.preventDefault();
+                signInButton.click();
             }
         });
 
@@ -179,18 +170,13 @@
             const email = emailInput.value;
             const password = passwordInput.value;
             if (!email || !password) {
-                authError.textContent = 'Please enter both email and password.';
+                authError.textContent = 'Please enter email and password.';
                 return;
             }
             authError.textContent = '';
             signInWithEmailAndPassword(auth, email, password)
                 .catch((error) => {
-                    console.error("Authentication failed:", error);
-                    if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-                        authError.textContent = 'Invalid email or password.';
-                    } else {
-                        authError.textContent = 'An error occurred during sign in.';
-                    }
+                    authError.textContent = 'Invalid email or password.';
                 });
         });
 
@@ -206,7 +192,8 @@
                     uid: currentUser.uid,
                     email: currentUser.email,
                     text: text,
-                    createdAt: serverTimestamp()
+                    createdAt: serverTimestamp(),
+                    viewedBy: [currentUser.uid] // Creator has "viewed" it by default
                 });
             } catch (error) {
                 console.error("Error sending message: ", error);
@@ -231,22 +218,41 @@
                 } else {
                     querySnapshot.forEach((doc) => {
                         const message = { id: doc.id, ...doc.data() };
+                        if (message.uid !== currentUser.uid && document.hidden) {
+                            favicon.href = notificationFavicon;
+                        }
                         const messageElement = createMessageElement(message);
                         messagesContainer.appendChild(messageElement);
                     });
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
-            }, (error) => {
-                console.error("Error loading messages:", error);
-                messagesContainer.innerHTML = '<div class="text-center text-red-400">Could not load messages.</div>';
             });
             return unsubscribe;
         }
 
+        // --- "VIEWED" LOGIC USING INTERSECTION OBSERVER ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const messageId = entry.target.dataset.messageId;
+                    const viewedBy = JSON.parse(entry.target.dataset.viewedBy);
+                    // Mark as viewed if it's another user's message and I haven't viewed it yet
+                    if (!viewedBy.includes(currentUser.uid)) {
+                        const messageRef = doc(db, 'messages', messageId);
+                        updateDoc(messageRef, {
+                            viewedBy: arrayUnion(currentUser.uid)
+                        });
+                    }
+                    observer.unobserve(entry.target); // Stop observing once seen
+                }
+            });
+        }, { threshold: 1.0 });
+
         function createMessageElement(message) {
             const isSentByCurrentUser = message.uid === currentUser.uid;
+            
             const wrapperDiv = document.createElement('div');
-            wrapperDiv.className = `flex ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`;
+            wrapperDiv.className = `flex items-end gap-2 ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`;
             
             const messageDiv = document.createElement('div');
             messageDiv.className = `max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl shadow ${isSentByCurrentUser ? 'bg-pink-500 rounded-br-none' : 'bg-gray-800 rounded-bl-none'}`;
@@ -268,12 +274,34 @@
             headerDiv.appendChild(timeSpan);
             
             const textP = document.createElement('p');
-            textP.className = 'text-sm text-white';
+            textP.className = 'text-sm text-white break-words';
             textP.textContent = message.text;
             
             messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(textP);
+
+            // Add the 'viewed' checkmark
+            const seenDiv = document.createElement('div');
+            if (isSentByCurrentUser) {
+                seenDiv.className = 'text-xs';
+                // Check if anyone OTHER than the current user has seen it
+                const hasBeenSeenByOther = message.viewedBy.some(uid => uid !== currentUser.uid);
+                if (hasBeenSeenByOther) {
+                    seenDiv.textContent = '✓✓';
+                    seenDiv.className += ' text-pink-300';
+                } else {
+                    seenDiv.textContent = '✓';
+                    seenDiv.className += ' text-gray-400';
+                }
+            }
+
             wrapperDiv.appendChild(messageDiv);
+            wrapperDiv.appendChild(seenDiv);
+
+            // Set up observer to mark as read
+            wrapperDiv.dataset.messageId = message.id;
+            wrapperDiv.dataset.viewedBy = JSON.stringify(message.viewedBy);
+            observer.observe(wrapperDiv);
             
             return wrapperDiv;
         }
