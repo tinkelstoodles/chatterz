@@ -92,7 +92,7 @@
 <body class="flex items-center justify-center h-full font-sans">
 
     <!-- Auth Container -->
-    <div id="auth-container" class="w-full max-w-sm mx-auto">
+    <div id="auth-container" class="w-full max-w-sm mx-auto p-4">
         <div class="bg-black/20 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/10">
             <div class="flex items-center justify-center gap-2">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-pink-400" viewBox="0 0 20 20" fill="currentColor">
@@ -118,38 +118,48 @@
 
 
     <!-- Chat Container (Initially Hidden) -->
-    <div id="chat-container" class="w-full h-full max-w-4xl mx-auto flex-col p-4 hidden">
-        <div class="bg-black/20 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl flex flex-col w-full h-full">
+    <!-- On mobile, it's full screen. On sm+, it becomes a card -->
+    <div id="chat-container" class="w-full h-full flex-col sm:max-w-4xl sm:mx-auto sm:p-4 hidden">
+        <div class="bg-black/20 backdrop-blur-lg sm:border sm:border-white/10 sm:rounded-2xl sm:shadow-2xl flex flex-col w-full h-full">
             <!-- Header -->
-            <header class="bg-black/10 p-4 border-b border-white/10 rounded-t-2xl flex justify-between items-center">
+            <header class="bg-black/10 p-4 border-b border-white/10 sm:rounded-t-2xl flex justify-between items-center">
                 <div>
                     <h1 class="text-xl font-bold text-pink-400 font-brand">Our Chat</h1>
                     <p id="user-id-display" class="text-xs text-purple-300">With: <span class="font-mono"></span></p>
                 </div>
-                 <div class="flex items-center gap-4">
-                    <button id="muteButton" class="text-purple-300 hover:text-white transition">
+                 <div class="flex items-center gap-2">
+                    <button id="muteButton" class="text-purple-300 hover:text-white transition p-2 rounded-full hover:bg-white/10">
                         <!-- Speaker Icon will be dynamically inserted here -->
                     </button>
-                    <button id="signOutButton" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                        Sign Out
-                    </button>
+                    <!-- More Options Menu -->
+                    <div class="relative">
+                        <button id="more-menu-button" class="text-purple-300 hover:text-white transition p-2 rounded-full hover:bg-white/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                        </button>
+                        <div id="more-menu" class="hidden absolute top-full right-0 mt-2 w-40 bg-gray-900/80 backdrop-blur-lg rounded-lg shadow-lg border border-white/10">
+                             <button id="signOutButton" class="w-full text-left px-4 py-2 text-sm text-white hover:bg-pink-500 rounded-lg flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                <span>Sign Out</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
             <!-- Messages Container -->
-            <main id="messages-container" class="flex-1 p-6 space-y-4 overflow-y-auto">
+            <main id="messages-container" class="flex-1 p-2 sm:p-6 space-y-4 overflow-y-auto">
                  <div class="text-center text-purple-300">Loading our messages...</div>
             </main>
 
             <!-- Typing Indicator -->
-            <div id="typing-indicator" class="h-6 px-6 pb-2 flex items-center gap-2 text-sm text-purple-300 opacity-0 transition-opacity">
+            <div id="typing-indicator" class="h-6 px-4 sm:px-6 pb-2 flex items-center gap-2 text-sm text-purple-300 opacity-0 transition-opacity">
                 <span id="typing-partner-email" class="font-semibold"></span>
                 <span>is typing</span>
                 <div class="dot-flashing"></div>
             </div>
 
             <!-- Message Input Form -->
-            <footer class="p-4 bg-black/10 border-t border-white/10 rounded-b-2xl">
+            <footer class="p-2 sm:p-4 bg-black/10 border-t border-white/10 sm:rounded-b-2xl">
                  <div class="relative">
                     <!-- Reply Preview Panel -->
                     <div id="reply-preview-container" class="hidden bg-white/10 p-2 rounded-t-lg mb-2">
@@ -163,12 +173,12 @@
                     </div>
 
                     <emoji-picker class="absolute bottom-16 left-0 hidden"></emoji-picker>
-                    <form id="message-form" class="flex items-center space-x-3">
-                        <button type="button" id="emoji-toggle-button" class="text-purple-300 hover:text-white p-2 rounded-full transition">
+                    <form id="message-form" class="flex items-end space-x-2">
+                        <button type="button" id="emoji-toggle-button" class="text-purple-300 hover:text-white p-2 rounded-full transition self-end mb-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </button>
-                        <textarea id="message-input" placeholder="Type something lovely..." rows="1" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition resize-none overflow-y-auto"></textarea>
-                        <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white font-bold p-3 rounded-lg transition duration-300 transform hover:scale-110">
+                        <textarea id="message-input" placeholder="Type something lovely..." rows="1" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition resize-none overflow-y-auto"></textarea>
+                        <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white font-bold p-3 rounded-lg transition duration-300 transform hover:scale-110 self-end">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
                             </svg>
@@ -251,7 +261,8 @@
         const replyPreviewEmail = document.getElementById('reply-preview-email');
         const replyPreviewText = document.getElementById('reply-preview-text');
         const cancelReplyButton = document.getElementById('cancel-reply-button');
-
+        const moreMenuButton = document.getElementById('more-menu-button');
+        const moreMenu = document.getElementById('more-menu');
 
         // --- EMOJI PICKER LOGIC ---
         emojiToggleButton.addEventListener('click', () => {
@@ -262,9 +273,18 @@
             messageInput.value += event.detail.unicode;
         });
         
+        // --- MENU LOGIC ---
+        moreMenuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            moreMenu.classList.toggle('hidden');
+        });
+        
         document.addEventListener('click', (event) => {
             if (!emojiPicker.contains(event.target) && !emojiToggleButton.contains(event.target)) {
                 emojiPicker.classList.add('hidden');
+            }
+            if (!moreMenu.classList.contains('hidden') && !moreMenuButton.contains(event.target)) {
+                moreMenu.classList.add('hidden');
             }
         });
 
@@ -365,7 +385,6 @@
             if (messageText) { 
                 sendMessage(messageText); 
                 messageInput.value = ''; 
-                // Reset textarea height after sending
                 messageInput.style.height = 'auto';
             }
         });
@@ -377,7 +396,6 @@
             el.style.height = (el.scrollHeight) + 'px';
         });
 
-        // "Enter to send" for textarea
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -484,18 +502,19 @@
             const isSentByCurrentUser = message.uid === currentUser.uid;
             
             const wrapperDiv = document.createElement('div');
-            wrapperDiv.className = `message-wrapper flex items-end gap-2 ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`;
-            
-            // Reply Button
+            wrapperDiv.className = `message-wrapper flex w-full ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`;
+
+            const innerWrapper = document.createElement('div');
+            innerWrapper.className = `flex items-end gap-1.5`;
+
             const replyButton = document.createElement('button');
-            replyButton.className = 'reply-button opacity-0 p-1 rounded-full hover:bg-white/20 transition-opacity';
+            replyButton.className = 'reply-button opacity-0 p-1 rounded-full hover:bg-white/20 transition-opacity self-start mt-2';
             replyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l4-4m-4 4l4 4" /></svg>`;
             replyButton.onclick = () => setReplyTo(message);
 
             const messageDiv = document.createElement('div');
-            messageDiv.className = `max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl shadow ${isSentByCurrentUser ? 'bg-pink-500 rounded-br-none' : 'bg-gray-800 rounded-bl-none'}`;
+            messageDiv.className = `max-w-[75vw] sm:max-w-xs md:max-w-md p-3 rounded-2xl shadow ${isSentByCurrentUser ? 'bg-pink-500 rounded-br-none' : 'bg-gray-800 rounded-bl-none'}`;
             
-            // Render the replied-to message block if it exists
             if (message.replyTo) {
                 const replyBlock = document.createElement('div');
                 replyBlock.className = 'mb-2 p-2 rounded-lg bg-black/20 border-l-2 border-pink-400';
@@ -512,7 +531,6 @@
                 replyBlock.appendChild(replyText);
                 messageDiv.appendChild(replyBlock);
             }
-
 
             const headerDiv = document.createElement('div');
             headerDiv.className = 'flex justify-between items-baseline mb-1';
@@ -538,16 +556,10 @@
             messageDiv.appendChild(textP);
             
             if (isSentByCurrentUser) {
-                wrapperDiv.appendChild(messageDiv);
-                wrapperDiv.appendChild(replyButton);
-            } else {
-                wrapperDiv.appendChild(replyButton);
-                wrapperDiv.appendChild(messageDiv);
-            }
+                innerWrapper.appendChild(messageDiv);
 
-            if (isSentByCurrentUser) {
                 const seenDiv = document.createElement('div');
-                seenDiv.className = 'seen-status text-xs'; 
+                seenDiv.className = 'seen-status text-xs self-end pb-1'; 
                 const hasBeenSeenByOther = message.viewedBy && message.viewedBy.some(uid => uid !== currentUser.uid);
                 if (hasBeenSeenByOther) {
                     seenDiv.textContent = '✓✓';
@@ -556,9 +568,14 @@
                     seenDiv.textContent = '✓';
                     seenDiv.className += ' text-gray-400';
                 }
-                wrapperDiv.appendChild(seenDiv);
+                innerWrapper.appendChild(seenDiv);
+                innerWrapper.appendChild(replyButton);
+            } else {
+                innerWrapper.appendChild(replyButton);
+                innerWrapper.appendChild(messageDiv);
             }
 
+            wrapperDiv.appendChild(innerWrapper);
             wrapperDiv.dataset.messageId = message.id;
             wrapperDiv.dataset.viewedBy = JSON.stringify(message.viewedBy || []);
             observer.observe(wrapperDiv);
@@ -568,4 +585,3 @@
     </script>
 </body>
 </html>
-
