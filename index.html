@@ -24,11 +24,15 @@
         body { background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%); }
 
         /* Scrollbar styling */
-        #messages-container::-webkit-scrollbar { width: 8px; }
-        #messages-container::-webkit-scrollbar-track { background: #312e81; }
-        #messages-container::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
-        #messages-container::-webkit-scrollbar-thumb:hover { background: #c084fc; }
+        #messages-container::-webkit-scrollbar, #message-input::-webkit-scrollbar { width: 8px; }
+        #messages-container::-webkit-scrollbar-track, #message-input::-webkit-scrollbar-track { background: #312e81; }
+        #messages-container::-webkit-scrollbar-thumb, #message-input::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
+        #messages-container::-webkit-scrollbar-thumb:hover, #message-input::-webkit-scrollbar-thumb:hover { background: #c084fc; }
         
+        #message-input {
+            max-height: 120px; /* Approx 4 lines */
+        }
+
         /* Reply button visibility on hover */
         .message-wrapper:hover .reply-button {
             opacity: 1;
@@ -163,7 +167,7 @@
                         <button type="button" id="emoji-toggle-button" class="text-purple-300 hover:text-white p-2 rounded-full transition">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </button>
-                        <input type="text" id="message-input" placeholder="Type something lovely..." autocomplete="off" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition" required>
+                        <textarea id="message-input" placeholder="Type something lovely..." rows="1" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition resize-none overflow-y-auto"></textarea>
                         <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white font-bold p-3 rounded-lg transition duration-300 transform hover:scale-110">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
@@ -358,8 +362,29 @@
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const messageText = messageInput.value.trim();
-            if (messageText) { sendMessage(messageText); messageInput.value = ''; }
+            if (messageText) { 
+                sendMessage(messageText); 
+                messageInput.value = ''; 
+                // Reset textarea height after sending
+                messageInput.style.height = 'auto';
+            }
         });
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', () => {
+            const el = messageInput;
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        });
+
+        // "Enter to send" for textarea
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                messageForm.requestSubmit();
+            }
+        });
+
 
         // --- TYPING INDICATOR LOGIC ---
         let typingTimeout;
